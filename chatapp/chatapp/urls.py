@@ -16,7 +16,31 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from django.views.generic import TemplateView
+from account.views import (
+    RegisterView, 
+    LoginView, 
+    register_view, 
+    login_view, 
+    chat_view,
+    logout_view,
+    ChatView
+)
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', TemplateView.as_view(template_name='index.html'), name='index'),
+    path('register/', register_view, name='register'),
+    path('login/', login_view, name='login'),
+    path('chat/', chat_view, name='chat'),
+    path('logout/', logout_view, name='logout'),
+    path('api/auth/register/', RegisterView.as_view(), name='auth_register'),
+    path('api/auth/login/', LoginView.as_view(), name='auth_login'),
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/chat/', ChatView.as_view(), name='chat_api'),
 ]
