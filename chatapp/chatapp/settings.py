@@ -40,7 +40,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
-    'account'
+    'account',
+    'channels',
+    'chat'
 ]
 
 MIDDLEWARE = [
@@ -94,7 +96,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'chatapp.wsgi.application'
-
+ASGI_APPLICATION = 'chatapp.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
@@ -140,8 +142,14 @@ USE_I18N = True
 
 USE_TZ = True
 
-
-
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('redis', 6379)],
+        },
+    },
+}
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [

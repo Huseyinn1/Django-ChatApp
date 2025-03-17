@@ -33,21 +33,34 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+        # Handle both JSON and form data
+        data = request.data if isinstance(request.data, dict) else request.POST
+        username = data.get('username')
+        password = data.get('password')
         user = authenticate(username=username, password=password)
         
         if user:
             refresh = RefreshToken.for_user(user)
-            return Response({
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            
+            response_data = {
                 'status': 'success',
                 'message': 'Giriş başarılı',
-                'tokens': 
-                {
-                'access': str(refresh.access_token),
-                'refresh': str(refresh)
+                'tokens': {
+                    'access': access_token,
+                    'refresh': refresh_token
                 }
-            })
+            }
+            
+            # If this is a form submission (not API), set session
+            if not isinstance(request.data, dict):
+                request.session['access_token'] = access_token
+                request.session['refresh_token'] = refresh_token
+                return redirect('chat')
+                
+            return Response(response_data)
+            
         return Response({
             'status': 'error',
             'message': 'Geçersiz kullanıcı adı veya şifre'
@@ -74,15 +87,32 @@ def login_view(request):
         if serializer.is_valid():
             user = serializer.validated_data['user']
             refresh = RefreshToken.for_user(user)
-            request.session['access_token'] = str(refresh.access_token)
-            request.session['refresh_token'] = str(refresh)
-            return redirect('chat')
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            
+            # Store tokens in session
+            request.session['access_token'] = access_token
+            request.session['refresh_token'] = refresh_token
+            
+            # Also store in cookies for JavaScript access
+            response = redirect('chat')
+            response.set_cookie('access_token', access_token, httponly=False)
+            response.set_cookie('refresh_token', refresh_token, httponly=False)
+            return response
         else:
             messages.error(request, 'Geçersiz kullanıcı adı veya şifre!')
     return render(request, 'login.html')
 
 def chat_view(request):
-    return render(request, 'chat.html')
+    access_token = request.session.get('access_token')
+    if not access_token:
+        return redirect('login')
+    
+    # Pass the token to the template
+    return render(request, 'chat.html', {
+        'access_token': access_token,
+        'refresh_token': request.session.get('refresh_token')
+    })
 
 def logout_view(request):
     request.session.pop('access_token', None)
@@ -96,4 +126,13 @@ class ChatView(APIView):
         return Response({
             'status': 'success',
             'message': 'Chat sayfasına hoş geldiniz'
+        })
+
+class UserInfoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({
+            'username': request.user.username,
+            'id': request.user.id
         })
